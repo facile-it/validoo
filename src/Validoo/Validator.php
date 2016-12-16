@@ -43,7 +43,7 @@ class Validator
      */
     public function isSuccess()
     {
-        return (empty($this->errors) == true);
+        return empty($this->errors);
     }
 
     /**
@@ -101,8 +101,9 @@ class Validator
     {
         /* handle error text file for custom validators */
         $custom_error_texts = [];
-        if (file_exists($this->getErrorFilePath($lang)))
+        if (file_exists($this->getErrorFilePath($lang))) {
             $custom_error_texts = include($this->getErrorFilePath($lang));
+        }
         return $custom_error_texts;
     }
 
@@ -128,10 +129,11 @@ class Validator
     {
         foreach ($params as $key => $param) {
             if (preg_match("#^:([a-zA-Z0-9_]+)$#", $param, $param_type)) {
-                if (isset($this->namings[(string)$param_type[1]]))
+                if (isset($this->namings[(string)$param_type[1]])) {
                     $params[$key] = $this->namings[(string)$param_type[1]];
-                else
+                } else {
                     $params[$key] = $param_type[1];
+                }
             }
         }
         return $params;
@@ -144,7 +146,7 @@ class Validator
      */
     public function getErrors(string $lang = null): array
     {
-        if ($lang == null)
+        if (null === $lang)
             $lang = $this->getDefaultLang();
 
         $error_results = [];
@@ -158,7 +160,6 @@ class Validator
                  * if parameters are input name they should be named as well
                  */
                 $result['params'] = $this->handleParameterNaming($result['params']);
-                var_dump($rule);
                 // if there is a custom message with input name, apply it
                 if (isset($this->customErrorsWithInputName[(string)$input_name][(string)$rule])) {
                     $error_message = $this->customErrorsWithInputName[(string)$input_name][(string)$rule];
@@ -194,7 +195,7 @@ class Validator
      */
     public function has(string $input_name, string $rule_name = null): bool
     {
-        if ($rule_name != null)
+        if (null !== $rule_name)
             return isset($this->errors[$input_name][$rule_name]);
         return isset($this->errors[$input_name]);
     }
