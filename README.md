@@ -6,6 +6,12 @@
 [![Coverage Status][Master coverage image]][Master coverage link]
 [![Scrutinizer][Master scrutinizer image]][Master scrutinizer link]
 
+## Installation
+
+```sh
+composer require facile-it/validoo
+```
+
 [Last stable image]: https://poser.pugx.org/facile-it/validoo/version.svg
 [Last unstable image]: https://poser.pugx.org/facile-it/validoo/v/unstable.svg
 [Master build image]: https://travis-ci.org/facile-it/validoo.svg
