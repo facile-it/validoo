@@ -65,7 +65,7 @@ class Validator
     /**
      * @return string
      */
-    protected function getDefaultLang()
+    protected function getDefaultLang(): string
     {
         return "en";
     }
