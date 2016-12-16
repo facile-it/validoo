@@ -31,216 +31,13 @@ class Validator
     /**
      * Constructor is not allowed because Validoo uses its own
      * static method to instantiate the validation
+     * @param $errors
+     * @param $namings
      */
     private function __construct($errors, $namings)
     {
         $this->errors = $errors;
         $this->namings = $namings;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isSuccess()
-    {
-        return empty($this->errors);
-    }
-
-    /**
-     * @param array $errors_array
-     */
-    public function customErrors(array $errors_array)
-    {
-        foreach ($errors_array as $key => $value) {
-            // handle input.rule eg (name.required)
-            if (preg_match("#^(.+?)\.(.+?)$#", $key, $matches)) {
-                // $this->customErrorsWithInputName[name][required] = error message
-                $this->customErrorsWithInputName[(string)$matches[1]][(string)$matches[2]] = $value;
-            } else {
-                $this->customErrors[(string)$key] = $value;
-            }
-        }
-    }
-
-    /**
-     * @return string
-     */
-    protected function getDefaultLang(): string
-    {
-        return "en";
-    }
-
-    /**
-     * @param string $lang
-     * @return null
-     */
-    protected function getErrorFilePath(string $lang)
-    {
-        return null;
-    }
-
-    /**
-     * @param string|null $lang
-     * @return array|mixed
-     */
-    protected function getDefaultErrorTexts(string $lang = null)
-    {
-        /* handle default error text file */
-        $default_error_texts = [];
-        if (file_exists(__DIR__ . "/errors/" . $lang . ".php")) {
-            $default_error_texts = include(__DIR__ . "/errors/" . $lang . ".php");
-        }
-        return $default_error_texts;
-    }
-
-    /**
-     * @param string|null $lang
-     * @return array|mixed
-     */
-    protected function getCustomErrorTexts(string $lang = null)
-    {
-        /* handle error text file for custom validators */
-        $custom_error_texts = [];
-        if (file_exists($this->getErrorFilePath($lang))) {
-            $custom_error_texts = include($this->getErrorFilePath($lang));
-        }
-        return $custom_error_texts;
-    }
-
-    /**
-     * @param string $input_name
-     * @return mixed|string
-     */
-    protected function handleNaming(string $input_name)
-    {
-        if (isset($this->namings[$input_name])) {
-            $named_input = $this->namings[$input_name];
-        } else {
-            $named_input = $input_name;
-        }
-        return $named_input;
-    }
-
-    /**
-     * @param array $params
-     * @return array
-     */
-    protected function handleParameterNaming(array $params)
-    {
-        foreach ($params as $key => $param) {
-            if (preg_match("#^:([a-zA-Z0-9_]+)$#", $param, $param_type)) {
-                if (isset($this->namings[(string)$param_type[1]])) {
-                    $params[$key] = $this->namings[(string)$param_type[1]];
-                } else {
-                    $params[$key] = $param_type[1];
-                }
-            }
-        }
-        return $params;
-    }
-
-    /**
-     * @param string|null $lang
-     * @return array
-     * @throws ValidooException
-     */
-    public function getErrors(string $lang = null): array
-    {
-        if (null === $lang)
-            $lang = $this->getDefaultLang();
-
-        $error_results = [];
-        $default_error_texts = $this->getDefaultErrorTexts($lang);
-        $custom_error_texts = $this->getCustomErrorTexts($lang);
-
-        foreach ($this->errors as $input_name => $results) {
-            foreach ($results as $rule => $result) {
-                $named_input = $this->handleNaming($input_name);
-                /**
-                 * if parameters are input name they should be named as well
-                 */
-                $result['params'] = $this->handleParameterNaming($result['params']);
-                // if there is a custom message with input name, apply it
-                if (isset($this->customErrorsWithInputName[(string)$input_name][(string)$rule])) {
-                    $error_message = $this->customErrorsWithInputName[(string)$input_name][(string)$rule];
-                } // if there is a custom message for the rule, apply it
-                else if (isset($this->customErrors[(string)$rule])) {
-                    $error_message = $this->customErrors[(string)$rule];
-                } // if there is a custom validator try to fetch from its error file
-                else if (isset($custom_error_texts[(string)$rule])) {
-                    $error_message = $custom_error_texts[(string)$rule];
-                } // if none try to fetch from default error file
-                else if (isset($default_error_texts[(string)$rule])) {
-                    $error_message = $default_error_texts[(string)$rule];
-                } else {
-                    throw new ValidooException(ValidooException::NO_ERROR_TEXT, $rule);
-                }
-                /**
-                 * handle :params(..)
-                 */
-                if (preg_match_all("#:params\((.+?)\)#", $error_message, $param_indexes))
-                    foreach ($param_indexes[1] as $param_index) {
-                        $error_message = str_replace(":params(" . $param_index . ")", $result['params'][$param_index], $error_message);
-                    }
-                $error_results[] = str_replace(":attribute", $named_input, $error_message);
-            }
-        }
-        return $error_results;
-    }
-
-    /**
-     * @param string $input_name
-     * @param string|null $rule_name
-     * @return bool
-     */
-    public function has(string $input_name, string $rule_name = null): bool
-    {
-        if (null !== $rule_name)
-            return isset($this->errors[$input_name][$rule_name]);
-        return isset($this->errors[$input_name]);
-    }
-
-    /**
-     * @return array
-     */
-    final public function getResults(): array
-    {
-        return $this->errors;
-    }
-
-    /**
-     * Gets the parameter names of a rule
-     * @param $rule
-     * @return mixed
-     */
-    private static function getParams($rule)
-    {
-        if (preg_match("#^([a-zA-Z0-9_]+)\((.+?)\)$#", $rule, $matches)) {
-            return [
-                'rule' => $matches[1],
-                'params' => explode(",", $matches[2])
-            ];
-        }
-        return [
-            'rule' => $rule,
-            'params' => []
-        ];
-    }
-
-    /**
-     * Handle parameter with input name
-     * eg: equals(:name)
-     * @param mixed $params
-     * @return mixed
-     */
-    private static function getParamValues($params, $inputs)
-    {
-        foreach ($params as $key => $param) {
-            if (preg_match("#^:([a-zA-Z0-9_]+)$#", $param, $param_type)) {
-                $params[$key] = @$inputs[(string)$param_type[1]];
-            }
-        }
-        return $params;
     }
 
     /**
@@ -275,7 +72,7 @@ class Validator
                     /**
                      * Handle anonymous functions
                      */
-                    if (@get_class($closure) == 'Closure') {
+                    if (@get_class($closure) === 'Closure') {
                         $refl_func = new \ReflectionFunction($closure);
                         $validation = $refl_func->invokeArgs($params);
                     } /**
@@ -304,12 +101,48 @@ class Validator
     }
 
     /**
+     * Gets the parameter names of a rule
+     * @param $rule
+     * @return mixed
+     */
+    private static function getParams($rule)
+    {
+        if (preg_match("#^([\w]+)\((.+?)\)$#", $rule, $matches)) {
+            return [
+                'rule' => $matches[1],
+                'params' => explode(',', $matches[2])
+            ];
+        }
+        return [
+            'rule' => $rule,
+            'params' => []
+        ];
+    }
+
+    /**
+     * Handle parameter with input name
+     * eg: equals(:name)
+     * @param mixed $params
+     * @param $inputs
+     * @return mixed
+     */
+    private static function getParamValues($params, $inputs)
+    {
+        foreach ($params as $key => $param) {
+            if (preg_match("#^:([\w]+)$#", $param, $param_type)) {
+                $params[$key] = @$inputs[(string)$param_type[1]];
+            }
+        }
+        return $params;
+    }
+
+    /**
      * @param null $input
      * @return bool
      */
     protected static function required($input = null): bool
     {
-        return (!is_null($input) && (trim($input) != ''));
+        return (null !== $input && (trim($input) != ''));
     }
 
     /**
@@ -375,12 +208,6 @@ class Validator
         return filter_var($input, FILTER_VALIDATE_IP);
     }
 
-    /*
-     * TODO: need improvements for tel and urn urls.
-     * check out url.test.php for the test result
-     * urn syntax: http://www.faqs.org/rfcs/rfc2141.html
-     *
-     */
     /**
      * @param $input
      * @return bool
@@ -446,5 +273,184 @@ class Validator
     protected static function is_filename($input): bool
     {
         return preg_match('/^[A-Za-z0-9-_]+[.]{1}[A-Za-z]+$/', $input);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isSuccess()
+    {
+        return empty($this->errors);
+    }
+
+    /**
+     * @param array $errors_array
+     */
+    public function customErrors(array $errors_array)
+    {
+        foreach ($errors_array as $key => $value) {
+            // handle input.rule eg (name.required)
+            if (preg_match("#^(.+?)\.(.+?)$#", $key, $matches)) {
+                // $this->customErrorsWithInputName[name][required] = error message
+                $this->customErrorsWithInputName[(string)$matches[1]][(string)$matches[2]] = $value;
+            } else {
+                $this->customErrors[(string)$key] = $value;
+            }
+        }
+    }
+
+    /**
+     * @param string|null $lang
+     * @return array
+     * @throws ValidooException
+     */
+    public function getErrors(string $lang = null): array
+    {
+        if (null === $lang)
+            $lang = $this->getDefaultLang();
+
+        $error_results = [];
+        $default_error_texts = $this->getDefaultErrorTexts($lang);
+        $custom_error_texts = $this->getCustomErrorTexts($lang);
+
+        foreach ($this->errors as $input_name => $results) {
+            foreach ($results as $rule => $result) {
+                $named_input = $this->handleNaming($input_name);
+                /**
+                 * if parameters are input name they should be named as well
+                 */
+                $result['params'] = $this->handleParameterNaming($result['params']);
+                // if there is a custom message with input name, apply it
+                if (isset($this->customErrorsWithInputName[(string)$input_name][(string)$rule])) {
+                    $error_message = $this->customErrorsWithInputName[(string)$input_name][(string)$rule];
+                } // if there is a custom message for the rule, apply it
+                else if (isset($this->customErrors[(string)$rule])) {
+                    $error_message = $this->customErrors[(string)$rule];
+                } // if there is a custom validator try to fetch from its error file
+                else if (isset($custom_error_texts[(string)$rule])) {
+                    $error_message = $custom_error_texts[(string)$rule];
+                } // if none try to fetch from default error file
+                else if (isset($default_error_texts[(string)$rule])) {
+                    $error_message = $default_error_texts[(string)$rule];
+                } else {
+                    throw new ValidooException(ValidooException::NO_ERROR_TEXT, $rule);
+                }
+                /**
+                 * handle :params(..)
+                 */
+                if (preg_match_all("#:params\((.+?)\)#", $error_message, $param_indexes))
+                    foreach ($param_indexes[1] as $param_index) {
+                        $error_message = str_replace(':params(' . $param_index . ')', $result['params'][$param_index], $error_message);
+                    }
+                $error_results[] = str_replace(':attribute', $named_input, $error_message);
+            }
+        }
+        return $error_results;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getDefaultLang(): string
+    {
+        return 'en';
+    }
+
+    /*
+     * TODO: need improvements for tel and urn urls.
+     * check out url.test.php for the test result
+     * urn syntax: http://www.faqs.org/rfcs/rfc2141.html
+     *
+     */
+
+    /**
+     * @param string|null $lang
+     * @return array|mixed
+     */
+    protected function getDefaultErrorTexts(string $lang = null)
+    {
+        /* handle default error text file */
+        $default_error_texts = [];
+        if (file_exists(__DIR__ . '/errors/' . $lang . '.php')) {
+            /** @noinspection PhpIncludeInspection */
+            $default_error_texts = include __DIR__ . '/errors/' . $lang . '.php';
+        }
+        return $default_error_texts;
+    }
+
+    /**
+     * @param string|null $lang
+     * @return array|mixed
+     */
+    protected function getCustomErrorTexts(string $lang = null)
+    {
+        /* handle error text file for custom validators */
+        $custom_error_texts = [];
+        if (file_exists($this->getErrorFilePath($lang))) {
+            /** @noinspection PhpIncludeInspection */
+            $custom_error_texts = include $this->getErrorFilePath($lang);
+        }
+        return $custom_error_texts;
+    }
+
+    /**
+     * @param string $lang
+     * @return null
+     */
+    protected function getErrorFilePath(string $lang)
+    {
+        return null;
+    }
+
+    /**
+     * @param string $input_name
+     * @return mixed|string
+     */
+    protected function handleNaming(string $input_name)
+    {
+        if (isset($this->namings[$input_name])) {
+            $named_input = $this->namings[$input_name];
+        } else {
+            $named_input = $input_name;
+        }
+        return $named_input;
+    }
+
+    /**
+     * @param array $params
+     * @return array
+     */
+    protected function handleParameterNaming(array $params)
+    {
+        foreach ($params as $key => $param) {
+            if (preg_match("#^:([\w]+)$#", $param, $param_type)) {
+                if (isset($this->namings[(string)$param_type[1]])) {
+                    $params[$key] = $this->namings[(string)$param_type[1]];
+                } else {
+                    $params[$key] = $param_type[1];
+                }
+            }
+        }
+        return $params;
+    }
+
+    /**
+     * @param string $input_name
+     * @param string|null $rule_name
+     * @return bool
+     */
+    public function has(string $input_name, string $rule_name = null): bool
+    {
+        if (null !== $rule_name)
+            return isset($this->errors[$input_name][$rule_name]);
+        return isset($this->errors[$input_name]);
+    }
+
+    /**
+     * @return array
+     */
+    final public function getResults(): array
+    {
+        return $this->errors;
     }
 }
