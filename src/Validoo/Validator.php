@@ -53,10 +53,11 @@ class Validator
         foreach ($rules as $input => $input_rules) {
             if (is_array($input_rules)) {
                 foreach ($input_rules as $rule => $closure) {
-                    if (!isset($inputs[(string)$input]))
+                    if (!isset($inputs[(string)$input])) {
                         $input_value = null;
-                    else
+                    } else {
                         $input_value = $inputs[(string)$input];
+                    }
                     /**
                      * if the key of the $input_rules is numeric that means
                      * it's neither an anonymous nor an user function.
@@ -64,10 +65,10 @@ class Validator
                     if (is_numeric($rule)) {
                         $rule = $closure;
                     }
-                    $rule_and_params = static::getParams($rule);
+                    $rule_and_params = self::getParams($rule);
                     $params = $real_params = $rule_and_params['params'];
                     $rule = $rule_and_params['rule'];
-                    $params = static::getParamValues($params, $inputs);
+                    $params = self::getParamValues($params, $inputs);
                     array_unshift($params, $input_value);
                     /**
                      * Handle anonymous functions
@@ -75,9 +76,7 @@ class Validator
                     if (@get_class($closure) === 'Closure') {
                         $refl_func = new \ReflectionFunction($closure);
                         $validation = $refl_func->invokeArgs($params);
-                    } /**
-                     * handle class methods
-                     */ else if (@method_exists(get_called_class(), $rule)) {
+                    } else if (@method_exists(get_called_class(), $rule)) {
                         $refl = new \ReflectionMethod(get_called_class(), $rule);
                         if ($refl->isStatic()) {
                             $refl->setAccessible(true);
@@ -306,8 +305,9 @@ class Validator
      */
     public function getErrors(string $lang = null): array
     {
-        if (null === $lang)
+        if (null === $lang) {
             $lang = $this->getDefaultLang();
+        }
 
         $error_results = [];
         $default_error_texts = $this->getDefaultErrorTexts($lang);
@@ -338,13 +338,15 @@ class Validator
                 /**
                  * handle :params(..)
                  */
-                if (preg_match_all("#:params\((.+?)\)#", $error_message, $param_indexes))
+                if (preg_match_all("#:params\((.+?)\)#", $error_message, $param_indexes)) {
                     foreach ($param_indexes[1] as $param_index) {
                         $error_message = str_replace(':params(' . $param_index . ')', $result['params'][$param_index], $error_message);
                     }
+                }
                 $error_results[] = str_replace(':attribute', $named_input, $error_message);
             }
         }
+
         return $error_results;
     }
 
@@ -375,6 +377,7 @@ class Validator
             /** @noinspection PhpIncludeInspection */
             $default_error_texts = include __DIR__ . '/errors/' . $lang . '.php';
         }
+
         return $default_error_texts;
     }
 
@@ -390,6 +393,7 @@ class Validator
             /** @noinspection PhpIncludeInspection */
             $custom_error_texts = include $this->getErrorFilePath($lang);
         }
+
         return $custom_error_texts;
     }
 
@@ -413,6 +417,7 @@ class Validator
         } else {
             $named_input = $input_name;
         }
+
         return $named_input;
     }
 
@@ -431,6 +436,7 @@ class Validator
                 }
             }
         }
+
         return $params;
     }
 
@@ -441,8 +447,10 @@ class Validator
      */
     public function has(string $input_name, string $rule_name = null): bool
     {
-        if (null !== $rule_name)
+        if (null !== $rule_name) {
             return isset($this->errors[$input_name][$rule_name]);
+        }
+
         return isset($this->errors[$input_name]);
     }
 
