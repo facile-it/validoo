@@ -87,8 +87,8 @@ class Validator
     {
         /* handle default error text file */
         $default_error_texts = [];
-        if (file_exists(__DIR__ . "./errors/" . $lang . ".php")) {
-            $default_error_texts = include(__DIR__ . "./errors/" . $lang . ".php");
+        if (file_exists(__DIR__ . "/errors/" . $lang . ".php")) {
+            $default_error_texts = include(__DIR__ . "/errors/" . $lang . ".php");
         }
         return $default_error_texts;
     }
@@ -150,6 +150,7 @@ class Validator
         $error_results = [];
         $default_error_texts = $this->getDefaultErrorTexts($lang);
         $custom_error_texts = $this->getCustomErrorTexts($lang);
+
         foreach ($this->errors as $input_name => $results) {
             foreach ($results as $rule => $result) {
                 $named_input = $this->handleNaming($input_name);
@@ -157,6 +158,7 @@ class Validator
                  * if parameters are input name they should be named as well
                  */
                 $result['params'] = $this->handleParameterNaming($result['params']);
+                var_dump($rule);
                 // if there is a custom message with input name, apply it
                 if (isset($this->customErrorsWithInputName[(string)$input_name][(string)$rule])) {
                     $error_message = $this->customErrorsWithInputName[(string)$input_name][(string)$rule];
