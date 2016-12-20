@@ -1,9 +1,44 @@
 <?php
 
-use Validoo\Validator;
+namespace Validoo;
 
-class ValidatorTest extends PHPUnit_Framework_TestCase
+class ValidatorTest extends \PHPUnit_Framework_TestCase
 {
+    public function testFunctionRule()
+    {
+        $rules = array(
+            'test' => 'alpha|isdir'
+        );
+        $inputs = array(
+            'test' => 'tests'
+        );
+        $validator = Validator::validate($inputs, $rules);
+        $this->assertTrue($validator->isSuccess());
+    }
+
+    public function testNotRequiredInput()
+    {
+        $rules = array(
+            'test' => 'onlyifset|isdir',
+        );
+        $inputs = array(
+            'test' => __DIR__,
+        );
+        $validator = Validator::validate($inputs, $rules);
+        $this->assertTrue($validator->isSuccess());
+
+        //-------------------------------------------
+
+        $rules = array(
+            'test' => 'onlyifset|isdir',
+        );
+        $inputs = array(
+            'test2' => __DIR__,
+        );
+        $validator = Validator::validate($inputs, $rules);
+        $this->assertTrue($validator->isSuccess());
+    }
+
     /**
      * INTEGER TESTS
      */

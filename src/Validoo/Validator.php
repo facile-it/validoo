@@ -41,7 +41,7 @@ class Validator
     }
 
     /**
-     * @param mixed $inputs
+     * @param $inputs
      * @param array $rules
      * @param array|null $naming
      * @return Validator
@@ -51,52 +51,68 @@ class Validator
     {
         $errors = null;
         foreach ($rules as $input => $input_rules) {
-            if (is_array($input_rules)) {
-                foreach ($input_rules as $rule => $closure) {
-                    if (!isset($inputs[(string)$input])) {
-                        $input_value = null;
-                    } else {
-                        $input_value = $inputs[(string)$input];
-                    }
-                    /**
-                     * if the key of the $input_rules is numeric that means
-                     * it's neither an anonymous nor an user function.
-                     */
-                    if (is_numeric($rule)) {
-                        $rule = $closure;
-                    }
-                    $rule_and_params = self::getParams($rule);
-                    $params = $real_params = $rule_and_params['params'];
-                    $rule = $rule_and_params['rule'];
-                    $params = self::getParamValues($params, $inputs);
-                    array_unshift($params, $input_value);
-                    /**
-                     * Handle anonymous functions
-                     */
-                    if (@get_class($closure) === 'Closure') {
-                        $refl_func = new \ReflectionFunction($closure);
-                        $validation = $refl_func->invokeArgs($params);
-                    } else if (@method_exists(get_called_class(), $rule)) {
-                        $refl = new \ReflectionMethod(get_called_class(), $rule);
-                        if ($refl->isStatic()) {
-                            $refl->setAccessible(true);
-                            $validation = $refl->invokeArgs(null, $params);
-                        } else {
-                            throw new ValidooException(ValidooException::STATIC_METHOD, $rule);
-                        }
-                    } else {
-                        throw new ValidooException(ValidooException::UNKNOWN_RULE, $rule);
-                    }
-                    if ($validation == false) {
-                        $errors[(string)$input][(string)$rule]['result'] = false;
-                        $errors[(string)$input][(string)$rule]['params'] = $real_params;
-                    }
-                }
-            } else {
+
+            if (is_string($input_rules))
+                $input_rules = explode("|", $input_rules);
+
+            if (!is_array($input_rules))
                 throw new ValidooException(ValidooException::ARRAY_EXPECTED, $input);
+
+            if (in_array("onlyifset", $input_rules) && !isset($inputs[$input]))
+                continue;
+
+            foreach ($input_rules as $rule => $closure) {
+                if (!isset($inputs[$input])) {
+                    $input_value = null;
+                } else {
+                    $input_value = $inputs[$input];
+                }
+                if (is_numeric($rule)) {
+                    $rule = $closure;
+                }
+                if ('onlyifset' == $rule)
+                    continue;
+
+                $rule_and_params = self::getParams($rule);
+                $params = $real_params = $rule_and_params['params'];
+                $rule = $rule_and_params['rule'];
+                $params = self::getParamValues($params, $inputs);
+                array_unshift($params, $input_value);
+
+                if (false == self::doValidation($closure, $params, $rule)) {
+                    $errors[$input][$rule]['result'] = false;
+                    $errors[$input][$rule]['params'] = $real_params;
+                }
             }
+
         }
         return new self($errors, $naming);
+    }
+
+    /**
+     * @param $closure
+     * @param $params
+     * @param $rule
+     * @return mixed
+     * @throws ValidooException
+     */
+    private static function doValidation($closure, $params, $rule)
+    {
+        if (@get_class($closure) === 'Closure') {
+            $refl_func = new \ReflectionFunction($closure);
+            $validation = $refl_func->invokeArgs($params);
+        } else if (@method_exists(get_called_class(), $rule)) {
+            $refl = new \ReflectionMethod(get_called_class(), $rule);
+            if ($refl->isStatic()) {
+                $refl->setAccessible(true);
+                $validation = $refl->invokeArgs(null, $params);
+            } else {
+                throw new ValidooException(ValidooException::STATIC_METHOD, $rule);
+            }
+        } else {
+            throw new ValidooException(ValidooException::UNKNOWN_RULE, $rule);
+        }
+        return $validation;
     }
 
     /**
@@ -160,6 +176,15 @@ class Validator
     protected static function email($input): bool
     {
         return filter_var($input, FILTER_VALIDATE_EMAIL);
+    }
+
+    /**
+     * @param $input
+     * @return bool
+     */
+    protected static function isdir($input): bool
+    {
+        return is_dir($input);
     }
 
     /**
@@ -260,15 +285,6 @@ class Validator
      * @param $input
      * @return bool
      */
-    protected static function is_path($input): bool
-    {
-        return is_dir($input);
-    }
-
-    /**
-     * @param $input
-     * @return bool
-     */
     protected static function is_filename($input): bool
     {
         return preg_match('/^[A-Za-z0-9-_]+[.]{1}[A-Za-z]+$/', $input);
@@ -311,7 +327,6 @@ class Validator
 
         $error_results = [];
         $default_error_texts = $this->getDefaultErrorTexts($lang);
-        $custom_error_texts = $this->getCustomErrorTexts($lang);
 
         foreach ($this->errors as $input_name => $results) {
             foreach ($results as $rule => $result) {
@@ -377,33 +392,12 @@ class Validator
             /** @noinspection PhpIncludeInspection */
             $default_error_texts = include __DIR__ . '/errors/' . $lang . '.php';
         }
-
-        return $default_error_texts;
-    }
-
-    /**
-     * @param string|null $lang
-     * @return array|mixed
-     */
-    protected function getCustomErrorTexts(string $lang = null)
-    {
-        /* handle error text file for custom validators */
-        $custom_error_texts = [];
-        if (file_exists($this->getErrorFilePath($lang))) {
-            /** @noinspection PhpIncludeInspection */
-            $custom_error_texts = include $this->getErrorFilePath($lang);
+        if (file_exists(__DIR__ . '/errors/' . $lang . '.json')) {
+            $default_error_texts = json_decode(file_get_contents(__DIR__ . '/errors/' . $lang . '.json'), true);
         }
 
-        return $custom_error_texts;
-    }
 
-    /**
-     * @param string $lang
-     * @return null
-     */
-    protected function getErrorFilePath(string $lang)
-    {
-        return null;
+        return $default_error_texts;
     }
 
     /**
