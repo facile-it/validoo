@@ -191,6 +191,15 @@ class Validator
      * @param $input
      * @return bool
      */
+    protected static function isarray($input): bool
+    {
+        return is_array($input);
+    }
+
+    /**
+     * @param $input
+     * @return bool
+     */
     protected static function integer($input): bool
     {
         return is_int($input) || ($input == (string)(int)$input);
