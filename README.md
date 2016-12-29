@@ -11,7 +11,6 @@ composer require facile-it/validoo
 ## Configuration
 
 ```php
-<?php 
 namespace Foo;
 
 use Validoo\Validator; // << Add this
