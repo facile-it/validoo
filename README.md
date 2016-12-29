@@ -1,6 +1,6 @@
 # facile-it/validoo
 
-[![Stable release][Last stable image]][Packagist link] [![Unstable release][Last unstable image]][Packagist link] [![Build status][Master build image]][Master build link] [![Coverage Status][Master coverage image]][Master coverage link] [![Scrutinizer][Master scrutinizer image]][Master scrutinizer link]
+[![Stable release][Last stable image]][Packagist link] [![Total Downloads][Total Download Packagist]][Packagist link] [![Unstable release][Last unstable image]][Packagist link] [![Build status][Master build image]][Master build link] [![Coverage Status][Master coverage image]][Master coverage link] [![Scrutinizer][Master scrutinizer image]][Master scrutinizer link]
 
 ## Installation
 
@@ -34,7 +34,7 @@ $validator = Validator::validate($inputs, $rules);
 
 echo $validator->isSuccess();  // print true
 ```
-
+[Total Download Packagist]: https://poser.pugx.org/facile-it/validoo/downloads
 [Last stable image]: https://poser.pugx.org/facile-it/validoo/version.svg
 [Last unstable image]: https://poser.pugx.org/facile-it/validoo/v/unstable.svg
 [Master build image]: https://travis-ci.org/facile-it/validoo.svg
