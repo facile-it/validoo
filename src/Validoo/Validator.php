@@ -159,6 +159,9 @@ class Validator
     {
         if (is_string($input))
             $input = trim($input);
+        if (is_numeric($input))
+            return true;
+
         return (null !== $input && !empty($input));
     }
 
