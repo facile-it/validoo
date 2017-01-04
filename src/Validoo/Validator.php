@@ -157,7 +157,9 @@ class Validator
      */
     protected static function required($input = null): bool
     {
-        return (null !== $input && (trim($input) != ''));
+        if (is_string($input))
+            $input = trim($input);
+        return (null !== $input && !empty($input));
     }
 
     /**
