@@ -304,6 +304,11 @@ class Validator
         return preg_match('/^[A-Za-z0-9-_]+[.]{1}[A-Za-z0-9]+$/', $input);
     }
 
+    protected static function exists_file($input): bool
+    {
+        return file_exists($input);
+    }
+
     /**
      * @return bool
      */
